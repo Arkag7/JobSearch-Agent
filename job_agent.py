@@ -11,7 +11,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-# Resume Text
+# --- PASTE YOUR ACTUAL RESUME TEXT BELOW ---
 RESUME_TEXT = """
 [PASTE YOUR RESUME TEXT HERE]
 """
@@ -19,7 +19,7 @@ RESUME_TEXT = """
 SEARCH_ROLE = "Enterprise Account Management"
 SEARCH_LOCATION = "Kolkata"
 HOURS_LOOKBACK = 24
-RESULTS_CEILING = 50
+RESULTS_CEILING = 15  # Capped to 15 jobs per run to prevent API quota overload
 MINIMUM_SCORE = 6
 
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -96,7 +96,7 @@ def evaluate_job_match(description):
         clean_json = response.text.replace("```json", "").replace("```", "").strip()
         return json.loads(clean_json)
     except Exception as err:
-        return {"score": 0, "reasoning": f"Error: {err}"}
+        return {"score": 0, "reasoning": f"API Error: {err}"}
 
 # 3. Process & Alert
 if not jobs.empty:
@@ -107,16 +107,19 @@ if not jobs.empty:
         job_url = job.get('job_url', '#')
 
         if not description or pd.isna(description) or len(str(description).strip()) < 50:
+            print(f"⏩ Skipping: '{title}' at {company} (No description)")
             continue
 
-        print(f"Evaluating: {title} at {company}")
+        print(f"Evaluating ({idx+1}/{len(jobs)}): {title} at {company}")
         evaluation = evaluate_job_match(description)
         score = evaluation.get("score", 0)
         reason = evaluation.get("reasoning", "")
 
         print(f"  ➜ Fit Score: {score}/10")
+        print(f"  ➜ Reason: {reason}\n")
 
         if score >= MINIMUM_SCORE:
             send_telegram_alert(title, company, score, reason, job_url)
 
-        time.sleep(13)
+        # 15 second delay between requests to stay under 5 req/min free rate limit
+        time.sleep(15)
