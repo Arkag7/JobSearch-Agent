@@ -1,0 +1,5 @@
+google-genai
+python-jobspy
+pandas
+requests
+numpy<2
