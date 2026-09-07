@@ -3,3 +3,7 @@ python-jobspy
 pandas
 requests
 numpy<2
+uvicorn
+fastapi
+
+
